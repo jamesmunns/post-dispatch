@@ -14,9 +14,7 @@ use std::{
 #[cfg(feature = "cobs-serial")]
 mod serial;
 
-use crate::{
-    Endpoint, Key, Topic, WireHeader,
-};
+use crate::{Endpoint, Key, Topic, WireHeader};
 use maitake_sync::{
     wait_map::{WaitError, WakeOutcome},
     WaitMap,
@@ -36,6 +34,8 @@ pub enum HostErr<WireErr> {
     /// We got a response that didn't match the expected value or the
     /// user specified wire error type
     BadResponse,
+    /// Exhausted number of retries.
+    Retries,
     /// Deserialization of the message failed
     Postcard(postcard::Error),
     /// The interface has been closed, and no further messages are possible
@@ -61,7 +61,7 @@ impl<T> From<WaitError> for HostErr<T> {
 /// has occurred.
 ///
 /// [HostClient]s can be cloned, and used across multiple tasks/threads.
-pub struct HostClient<WireErr> {
+pub struct HostClient<WireErr, const RETRY_BITS: usize = 0> {
     ctx: Arc<HostContext>,
     out: Sender<RpcFrame>,
     subber: Sender<SubInfo>,
@@ -70,10 +70,12 @@ pub struct HostClient<WireErr> {
 }
 
 /// # Constructor Methods
-impl<WireErr> HostClient<WireErr>
+impl<WireErr, const RETRY_BITS: usize> HostClient<WireErr, RETRY_BITS>
 where
     WireErr: DeserializeOwned + Schema,
 {
+    const _CHECK_NUM_BITS: () = assert!(RETRY_BITS <= 8);
+
     /// Create a new manually implemented [HostClient].
     ///
     /// This allows you to implement your own "Wire" abstraction, if you
@@ -83,6 +85,8 @@ where
     /// stable, and we can have users provide a `Wire` trait that acts as
     /// a bidirectional [RpcFrame] sink/source.
     pub fn new_manual(err_uri_path: &str, outgoing_depth: usize) -> (Self, WireContext) {
+        let _ = Self::_CHECK_NUM_BITS;
+
         let (tx_pc, rx_pc) = tokio::sync::mpsc::channel(outgoing_depth);
         let (tx_si, rx_si) = tokio::sync::mpsc::channel(outgoing_depth);
 
@@ -109,10 +113,45 @@ where
 
         (me, wire)
     }
+
+    /// Create a new retry tracker.
+    pub fn retry_tracker(&self) -> RetryTracker<RETRY_BITS> {
+        RetryTracker {
+            seq_no: self.ctx.seq.fetch_add(1 << RETRY_BITS, Ordering::Relaxed),
+            retries: 0,
+        }
+    }
+}
+
+/// Tracks retries.
+pub struct RetryTracker<const RETRY_BITS: usize> {
+    seq_no: u32,
+    retries: u8,
+}
+
+impl<const RETRY_BITS: usize> RetryTracker<RETRY_BITS> {
+    /// Try to generate another sequence number.
+    fn try_next_sequence_number<WireErr>(&mut self) -> Result<u32, HostErr<WireErr>>
+    where
+        WireErr: DeserializeOwned + Schema,
+    {
+        if RETRY_BITS == 0 {
+            return Err(HostErr::Retries);
+        }
+
+        if self.retries >= (1 << RETRY_BITS) - 1 {
+            return Err(HostErr::Retries);
+        }
+
+        let retries = self.retries;
+        self.retries += 1;
+
+        Ok(self.seq_no | retries as u32)
+    }
 }
 
 /// # Interface Methods
-impl<WireErr> HostClient<WireErr>
+impl<WireErr, const RETRY_BITS: usize> HostClient<WireErr, RETRY_BITS>
 where
     WireErr: DeserializeOwned + Schema,
 {
@@ -128,7 +167,38 @@ where
         E::Request: Serialize + Schema,
         E::Response: DeserializeOwned + Schema,
     {
-        let seq_no = self.ctx.seq.fetch_add(1, Ordering::Relaxed);
+        let seq_no = self.ctx.seq.fetch_add(1 << RETRY_BITS, Ordering::Relaxed);
+        self.send_resp_inner::<E>(t, seq_no).await
+    }
+
+    /// Send a message of type [Endpoint::Request][Endpoint] to `path`, and await
+    /// a response of type [Endpoint::Response][Endpoint] (or WireErr) to `path`.
+    ///
+    /// This function will wait potentially forever. Consider using with a timeout.
+    /// If used with timeout, this allows for retrying the same command again for up to
+    /// `(1 << RETRY_BITS) - 1` times.
+    pub async fn send_resp_with_retries<E: Endpoint>(
+        &self,
+        retry_state: &mut RetryTracker<RETRY_BITS>,
+        t: &E::Request,
+    ) -> Result<E::Response, HostErr<WireErr>>
+    where
+        E::Request: Serialize + Schema,
+        E::Response: DeserializeOwned + Schema,
+    {
+        let seq_no = retry_state.try_next_sequence_number()?;
+        self.send_resp_inner::<E>(t, seq_no).await
+    }
+
+    async fn send_resp_inner<E: Endpoint>(
+        &self,
+        t: &E::Request,
+        seq_no: u32,
+    ) -> Result<E::Response, HostErr<WireErr>>
+    where
+        E::Request: Serialize + Schema,
+        E::Response: DeserializeOwned + Schema,
+    {
         let msg = postcard::to_stdvec(&t).expect("Allocations should not ever fail");
         let frame = RpcFrame {
             header: WireHeader {
@@ -235,7 +305,7 @@ where
 }
 
 // Manual Clone impl because WireErr may not impl Clone
-impl<WireErr> Clone for HostClient<WireErr> {
+impl<WireErr, const RETRY_BITS: usize> Clone for HostClient<WireErr, RETRY_BITS> {
     fn clone(&self) -> Self {
         Self {
             ctx: self.ctx.clone(),
