@@ -5,10 +5,10 @@ edition = "2021"
 
 [dependencies]
 cortex-m                = { version = "0.7.6", features = ["inline-asm"] }
-embassy-executor        = { version = "0.6.0", features = ["task-arena-size-32768", "arch-cortex-m", "executor-thread", "executor-interrupt", "defmt", "integrated-timers"] }
-embassy-rp              = { version = "0.2.0", features = ["rp2040", "defmt", "unstable-pac", "time-driver", "critical-section-impl"] }
-embassy-sync            = { version = "0.6.0", features = ["defmt"] }
-embassy-time            = { version = "0.3.2", features = ["defmt", "defmt-timestamp-uptime"] }
+embassy-executor        = { version = "0.7.0", features = ["task-arena-size-32768", "arch-cortex-m", "executor-thread", "executor-interrupt", "defmt"] }
+embassy-rp              = { version = "0.3.0", features = ["rp2040", "defmt", "unstable-pac", "time-driver", "critical-section-impl"] }
+embassy-sync            = { version = "0.6.1", features = ["defmt"] }
+embassy-time            = { version = "0.4", features = ["defmt", "defmt-timestamp-uptime"] }
 embassy-usb             = { version = "0.3.0", features = ["defmt"] }
 embedded-hal-bus        = { version = "0.1",   features = ["async"] }
 lis3dh-async            = { version = "0.9.2", features = ["defmt"] }
@@ -28,7 +28,7 @@ fixed               = "1.23.1"
 fixed-macro         = "1.2"
 pio                 = "0.2.1"
 pio-proc            = "0.2"
-smart-leds          = "0.3.0"
+smart-leds          = "0.4.0"
 static_cell         = "2.1"
 
 [profile.release]
@@ -39,11 +39,11 @@ codegen-units = 1
 incremental = false
 
 [patch.crates-io]
-embassy-embedded-hal = { git = "https://github.com/embassy-rs/embassy", rev = "32cff6530fdb81066451cc1d3f1fbbb420e985da" }
-embassy-executor     = { git = "https://github.com/embassy-rs/embassy", rev = "32cff6530fdb81066451cc1d3f1fbbb420e985da" }
-embassy-rp           = { git = "https://github.com/embassy-rs/embassy", rev = "32cff6530fdb81066451cc1d3f1fbbb420e985da" }
-embassy-sync         = { git = "https://github.com/embassy-rs/embassy", rev = "32cff6530fdb81066451cc1d3f1fbbb420e985da" }
-embassy-time         = { git = "https://github.com/embassy-rs/embassy", rev = "32cff6530fdb81066451cc1d3f1fbbb420e985da" }
-embassy-usb          = { git = "https://github.com/embassy-rs/embassy", rev = "32cff6530fdb81066451cc1d3f1fbbb420e985da" }
-embassy-usb-driver   = { git = "https://github.com/embassy-rs/embassy", rev = "32cff6530fdb81066451cc1d3f1fbbb420e985da" }
+embassy-embedded-hal = { git = "https://github.com/embassy-rs/embassy", rev = "92326f10b5be1d6fdc6bd414eb0656e3890bd825" }
+embassy-executor     = { git = "https://github.com/embassy-rs/embassy", rev = "92326f10b5be1d6fdc6bd414eb0656e3890bd825" }
+embassy-rp           = { git = "https://github.com/embassy-rs/embassy", rev = "92326f10b5be1d6fdc6bd414eb0656e3890bd825" }
+embassy-sync         = { git = "https://github.com/embassy-rs/embassy", rev = "92326f10b5be1d6fdc6bd414eb0656e3890bd825" }
+embassy-time         = { git = "https://github.com/embassy-rs/embassy", rev = "92326f10b5be1d6fdc6bd414eb0656e3890bd825" }
+embassy-usb          = { git = "https://github.com/embassy-rs/embassy", rev = "92326f10b5be1d6fdc6bd414eb0656e3890bd825" }
+embassy-usb-driver   = { git = "https://github.com/embassy-rs/embassy", rev = "92326f10b5be1d6fdc6bd414eb0656e3890bd825" }
 postcard-rpc         = { path = "../../source/postcard-rpc" }

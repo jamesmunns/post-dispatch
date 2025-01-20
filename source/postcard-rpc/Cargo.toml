@@ -124,7 +124,7 @@ version = "2.1"
 optional = true
 
 [dependencies.embassy-executor]
-version = "0.6"
+version = "0.7"
 optional = true
 
 [dependencies.embassy-futures]
@@ -132,7 +132,7 @@ version = "0.1"
 optional = true
 
 [dependencies.embassy-time]
-version = "0.3"
+version = "0.4"
 optional = true
 
 [dependencies.portable-atomic]
