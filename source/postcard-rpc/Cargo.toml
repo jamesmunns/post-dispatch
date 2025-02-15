@@ -19,6 +19,8 @@ features = [
     "cobs-serial",
     "raw-nusb",
     "embassy-usb-0_3-server",
+    "embassy-usb-0_4-server",
+    "embedded-io-async-0_6-server",
     "_docs-fix",
     # TODO: What to do about the webusb feature? Can we do separate target builds?
 ]
@@ -145,6 +147,11 @@ optional = true
 version = "1.0"
 default-features = false
 
+[dependencies.embedded-io-async-0_6]
+package = "embedded-io-async"
+version = "0.6"
+optional = true
+
 [dev-dependencies]
 postcard-rpc = { path = "../postcard-rpc", features = ["test-utils"] }
 
@@ -222,6 +229,14 @@ embassy-usb-0_4-server = [
     "dep:embassy-executor",
     "dep:embassy-time",
     "dep:embassy-futures",
+]
+
+embedded-io-async-0_6-server = [
+    "dep:embassy-sync",
+    "dep:static_cell",
+    "dep:embassy-executor",
+    "dep:embedded-io-async-0_6",
+    "cobs",
 ]
 
 # NOTE: This exists because `embassy-usb` indirectly relies on ssmarshal

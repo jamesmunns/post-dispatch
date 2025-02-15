@@ -2,13 +2,12 @@
 
 use crate::{
     header::{VarHeader, VarKey, VarKeyKind, VarSeq},
-    server::{WireRx, WireRxErrorKind, WireSpawn, WireTx, WireTxErrorKind},
+    server::{WireRx, WireRxErrorKind, WireTx, WireTxErrorKind},
     standard_icd::LoggingTopic,
     Topic,
 };
 use core::fmt::Arguments;
 use core::sync::atomic::{AtomicU8, Ordering};
-use embassy_executor::{SpawnError, SpawnToken, Spawner};
 use embassy_futures::select::{select, Either};
 use embassy_sync::{blocking_mutex::raw::RawMutex, mutex::Mutex};
 use embassy_time::Timer;
@@ -582,38 +581,8 @@ impl<D: Driver<'static>> WireRx for EUsbWireRx<D> {
 //////////////////////////////////////////////////////////////////////////////
 // SPAWN
 //////////////////////////////////////////////////////////////////////////////
-
-/// A [`WireSpawn`] impl using the embassy executor
-#[derive(Clone)]
-pub struct EUsbWireSpawn {
-    /// The embassy-executor spawner
-    pub spawner: Spawner,
-}
-
-impl From<Spawner> for EUsbWireSpawn {
-    fn from(value: Spawner) -> Self {
-        Self { spawner: value }
-    }
-}
-
-impl WireSpawn for EUsbWireSpawn {
-    type Error = SpawnError;
-
-    type Info = Spawner;
-
-    fn info(&self) -> &Self::Info {
-        &self.spawner
-    }
-}
-
-/// Attempt to spawn the given token
-pub fn embassy_spawn<Sp, S: Sized>(sp: &Sp, tok: SpawnToken<S>) -> Result<(), Sp::Error>
-where
-    Sp: WireSpawn<Error = SpawnError, Info = Spawner>,
-{
-    let info = sp.info();
-    info.spawn(tok)
-}
+pub use super::embassy_shared::embassy_spawn;
+pub use super::embassy_shared::EmbassyWireSpawn as EUsbWireSpawn;
 
 //////////////////////////////////////////////////////////////////////////////
 // OTHER
